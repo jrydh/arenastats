@@ -1,0 +1,12 @@
+## Interface: 30000
+## Title: ArenaStats
+## Notes: Gathers statistics of your arena games
+## Author: Rishi
+## Version: r4
+## SavedVariables: ArenaStatsDB
+
+embeds.xml
+ArenaStats.lua
+GamesFrame.lua
+StatsFrame.lua
+GraphFrame.lua
