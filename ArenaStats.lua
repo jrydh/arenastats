@@ -159,7 +159,7 @@ function ArenaStats:UPDATE_BATTLEFIELD_SCORE()
 		local opponents = ( playerTeamIndex == 0 and goldTeam or greenTeam );
 		local result = ( GetBattlefieldWinner() == playerTeamIndex ) and 1 or 0
 	
-		local playerTeamName, oldRating, newRating = GetBattlefieldTeamInfo( playerTeamIndex );
+		local playerTeamName, oldRating, newRating, mmRating = GetBattlefieldTeamInfo( playerTeamIndex );
 		opponents.name, opponentOldRating, opponentNewRating = GetBattlefieldTeamInfo( 1-playerTeamIndex );
 
 		local noGames = self:GetTeamStats( playerTeamName );
@@ -174,6 +174,7 @@ function ArenaStats:UPDATE_BATTLEFIELD_SCORE()
 				["result"] = result,
 				["oldRating"] = oldRating,
 				["newRating"] = newRating,
+				["mmRating"] = mmRating,
 				["opponents"] = opponents,
 			}
 		};
