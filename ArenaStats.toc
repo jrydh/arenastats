@@ -1,4 +1,4 @@
-## Interface: 30000
+## Interface: 30100
 ## Title: ArenaStats
 ## Notes: Gathers statistics of your arena games
 ## Author: Rishi
