@@ -85,6 +85,7 @@ end
 function ArenaStats:UpdateGraphFrame()
 	local games = self.db.char.games[ self.team ][ self.season ];
 	local points = {};
+	local points2 = {};
 	local xmin, xmax, ymin, ymax;
 	for id = 1,games.lastGame do
 		local game = games[id];
@@ -93,6 +94,18 @@ function ArenaStats:UpdateGraphFrame()
 				tinsert( points, { id-1, game.oldRating } );
 			end
 			tinsert( points, { id, game.newRating } );
+			if( game.mmRating ) then
+				tinsert( points2, { id-1, game.mmRating } );
+				if( not xmin or id-1 < xmin ) then
+					xmin = id-1;
+				end
+				if( not ymin or game.mmRating < ymin ) then
+					ymin = game.mmRating;
+				end
+				if( not ymax or game.mmRating > ymax ) then
+					ymax = game.mmRating;
+				end
+			end
 			if( not xmin or id < xmin ) then
 				xmin = id;
 			end
@@ -111,6 +124,7 @@ function ArenaStats:UpdateGraphFrame()
 	local g = self.graphFrame.graph;
 	g:ResetData();
 	g:AddDataSeries( points, { 0.0, 0.0, 1.0, 1.0 } );
+	g:AddDataSeries( points2, { 0.0, 0.75, 0.0, 1.0 } );
 
 	local xgrid = ( xmax - xmin ) / 10;
 	xgrid = max( 1, floor( xgrid/10 + 0.5 ) ) * 10;
