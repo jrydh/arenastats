@@ -87,6 +87,7 @@ function ArenaStats:UpdateGraphFrame()
 	local points = {};
 	local points2 = {};
 	local xmin, xmax, ymin, ymax;
+	local teamMax, mmMax = 0, 0;
 	for id = 1,games.lastGame do
 		local game = games[id];
 		if( game ) then
@@ -102,8 +103,8 @@ function ArenaStats:UpdateGraphFrame()
 				if( not ymin or game.mmRating < ymin ) then
 					ymin = game.mmRating;
 				end
-				if( not ymax or game.mmRating > ymax ) then
-					ymax = game.mmRating;
+				if( game.mmRating > mmMax ) then
+					mmMax = game.mmRating;
 				end
 			end
 			if( not xmin or id < xmin ) then
@@ -115,11 +116,12 @@ function ArenaStats:UpdateGraphFrame()
 			if( not ymin or game.newRating < ymin ) then
 				ymin = game.newRating;
 			end
-			if( not ymax or game.newRating > ymax ) then
-				ymax = game.newRating;
+			if( game.newRating > teamMax ) then
+				teamMax = game.newRating;
 			end
 		end
 	end
+	ymax = max( teamMax, mmMax );
 
 	local g = self.graphFrame.graph;
 	g:ResetData();
@@ -148,7 +150,8 @@ function ArenaStats:UpdateGraphFrame()
 	else
 		getglobal("ArenaGraphTeamSize"):SetText( "" );
 	end
-	getglobal("ArenaGraphHighRating"):SetText( "High rating: " .. ymax );
+	local s = string.format( "High rating: |cFF0000FF%d|r / |cFF00FF00%d|r", teamMax, mmMax );
+	getglobal("ArenaGraphHighRating"):SetText( s );
 	getglobal("ArenaGraphGridSpacing"):SetText(
 		string.format( "Each vertical gridline represents %d games", xgrid ) );
 end
