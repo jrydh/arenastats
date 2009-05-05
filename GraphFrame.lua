@@ -87,7 +87,8 @@ function ArenaStats:UpdateGraphFrame()
 	local points = {};
 	local points2 = {};
 	local xmin, xmax, ymin, ymax;
-	local teamMax, mmMax = 0, 0;
+	local currentTR, currentMMR = 0, 0;
+	local maxTR, maxMMR = 0, 0;
 	for id = 1,games.lastGame do
 		local game = games[id];
 		if( game ) then
@@ -95,16 +96,18 @@ function ArenaStats:UpdateGraphFrame()
 				tinsert( points, { id-1, game.oldRating } );
 			end
 			tinsert( points, { id, game.newRating } );
+			currentTR = game.newRating;
 			if( game.mmRating ) then
 				tinsert( points2, { id-1, game.mmRating } );
+				currentMMR = game.mmRating;
 				if( not xmin or id-1 < xmin ) then
 					xmin = id-1;
 				end
 				if( not ymin or game.mmRating < ymin ) then
 					ymin = game.mmRating;
 				end
-				if( game.mmRating > mmMax ) then
-					mmMax = game.mmRating;
+				if( game.mmRating > maxMMR ) then
+					maxMMR = game.mmRating;
 				end
 			end
 			if( not xmin or id < xmin ) then
@@ -116,12 +119,12 @@ function ArenaStats:UpdateGraphFrame()
 			if( not ymin or game.newRating < ymin ) then
 				ymin = game.newRating;
 			end
-			if( game.newRating > teamMax ) then
-				teamMax = game.newRating;
+			if( game.newRating > maxTR ) then
+				maxTR = game.newRating;
 			end
 		end
 	end
-	ymax = max( teamMax, mmMax );
+	ymax = max( maxTR, maxMMR );
 
 	local g = self.graphFrame.graph;
 	g:ResetData();
@@ -150,7 +153,8 @@ function ArenaStats:UpdateGraphFrame()
 	else
 		getglobal("ArenaGraphTeamSize"):SetText( "" );
 	end
-	local s = string.format( "High rating: |cFF0000FF%d|r / |cFF00FF00%d|r", teamMax, mmMax );
+	local s = "Current: |cFF0000FF%d|r / |cFF00FF00%d|r    Max: |cFF0000FF%d|r / |cFF00FF00%d|r";
+	local s = s:format( currentTR, currentMMR, maxTR, maxMMR );
 	getglobal("ArenaGraphHighRating"):SetText( s );
 	getglobal("ArenaGraphGridSpacing"):SetText(
 		string.format( "Each vertical gridline represents %d games", xgrid ) );
