@@ -132,7 +132,6 @@ function ArenaStats:ZONE_CHANGED_NEW_AREA()
 			self.newEntry.game.oldRating, self.newEntry.game.newRating ) );
 		self:Print( string.format( "%s: %d -> %d", self.newEntry.game.opponents.name,
 			self.newEntry.opponentOldRating, self.newEntry.opponentNewRating ) );
-		-- TODO: Check if GetCurrentArenaSeason bug is fixed (wrong result while in arenas)
 		self:AddGame( self.newEntry.team, GetCurrentArenaSeason(), self.newEntry.id, self.newEntry.game );
 		self:Synchronize( self.newEntry.team, GetCurrentArenaSeason(), self.newEntry.id );
 		self.newEntry = nil;
@@ -161,6 +160,10 @@ function ArenaStats:UPDATE_BATTLEFIELD_SCORE()
 	
 		local playerTeamName, oldRating, newRating, mmRating = GetBattlefieldTeamInfo( playerTeamIndex );
 		opponents.name, opponentOldRating, opponentNewRating = GetBattlefieldTeamInfo( 1-playerTeamIndex );
+
+		if( not mmRating ) then
+			self:Print( "WARNING: No matchmaking rating detected." );
+		end
 
 		local noGames = self:GetTeamStats( playerTeamName );
 
