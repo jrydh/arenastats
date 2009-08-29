@@ -68,6 +68,10 @@ function ArenaStats:InitGamesFrame()
 	t:SetTexture( "Interface/PaperDollInfoFrame/UI-Character-General-BottomRight" );
 	t:SetPoint( "TOPLEFT", f, "TOPLEFT", 258, -257 );
 
+	local s = f:CreateFontString( nil, "BORDER", "GameFontHighlight" );
+	s:SetText( "Game History" );
+	s:SetPoint( "TOP", f, "TOP", 3, -50 );
+
 	-- Close button
 	local b = CreateFrame( "Button", nil, f, UIPanelCloseButton );
 	b:SetPoint( "TOPRIGHT", f, "TOPRIGHT", -29, -9 );
@@ -80,7 +84,7 @@ function ArenaStats:InitGamesFrame()
 
 	-- Column headers
 	local labels = { "Game", "Opponents", "Result", "Rating" };
-	local width = { 45, 133, 45, 55 };
+	local width = { 45, 160, 45, 55 };
 	for i = 1,4 do
 		local b = CreateFrame( "Button", "ArenaGamesFrameHeader"..i, f );
 		if( i == 1 ) then
@@ -119,8 +123,12 @@ function ArenaStats:InitGamesFrame()
 		b:SetHighlightTexture( tHigh, "ADD" );
 	end
 
+	f:EnableMouseWheel(1);
+	f:SetScript( "OnMouseWheel", function( frame, d )
+			f.offset = f.offset - d; f.needsUpdate = true; end );
+
 	-- List "buttons"
-	for i = 1,13 do
+	for i = 1,17 do
 		local b = CreateFrame( "Button", "ArenaGamesFrameEntry"..i, f );
 		b:SetPoint( "TOPLEFT", "ArenaGamesFrameHeader1", "BOTTOMLEFT", 0, 16-i*19 )
 		b:SetWidth( 278 );
@@ -179,22 +187,39 @@ function ArenaStats:InitGamesFrame()
 		ratingLabel:SetJustifyH( "CENTER" );
 	end
 	
-	local s = CreateFrame( "Slider", "ArenaGamesSlider", f );
-	s:SetBackdrop( {
-		bgFile = "Interface\Buttons\UI-SliderBar-Background",
-		edgeFile = "Interface\Buttons\UI-SliderBar-Border",
-		tile = true, tileSize = 8, edgeSize = 8,
-		insets = { left = 3, right = 3, top = 6, bottom = 6 } } );
-	s:SetThumbTexture( "Interface\Buttons\UI-SliderBar-Button-Vertical" );
-	s:SetOrientation( "VERTICAL" );
-	s:SetWidth( 16 );
-	s:SetHeight( 128 );
---	s:SetPoint( "TOPRIGHT", f, "TOPRIGHT", -30, -99 );
-	s:SetPoint( "CENTER", f, "CENTER" );
-	s:SetMinMaxValues( 0, 50 );
-	s:SetValue( 0 );
-	s:SetValueStep( 1 );
-		
+	-- Scroll buttons
+	local b = CreateFrame( "Button", "ArenaGamesScrollUpButton", f );
+	b:SetScript( "OnClick", function()
+		if IsAltKeyDown() then
+			self.gamesFrame.offset = 0;
+		else
+			self.gamesFrame.offset = max( self.gamesFrame.offset - 5, 0 );
+		end
+		self.gamesFrame.needsUpdate = true;
+	end );
+	b:SetPoint( "TOPRIGHT", f, "TOPRIGHT", -40, -72 );
+	b:SetWidth( 24 );
+	b:SetHeight( 24 );
+	b:SetNormalTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollUp-Up" );
+	b:SetPushedTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollUp-Down" );
+	b:SetDisabledTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollUp-Disabled" );
+
+	local b = CreateFrame( "Button", "ArenaGamesScrollDownButton", f );
+	b:SetScript( "OnClick", function( self )
+		if IsAltKeyDown() then
+			ArenaStats.gamesFrame.offset = self.offsetEnd;
+		else
+			ArenaStats.gamesFrame.offset = min( ArenaStats.gamesFrame.offset + 5, self.offsetEnd );
+		end
+		ArenaStats.gamesFrame.needsUpdate = true;
+	end );
+	b:SetPoint( "BOTTOMRIGHT", f, "BOTTOMRIGHT", -40, 78 );
+	b:SetWidth( 24 );
+	b:SetHeight( 24 );
+	b:SetNormalTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollDown-Up" );
+	b:SetPushedTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollDown-Down" );
+	b:SetDisabledTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollDown-Disabled" );
+	
 	self.gamesFrame = f;
 	tinsert( UISpecialFrames, "ArenaGamesFrame" );
 	self.gamesFrame.offset = 0;
@@ -241,15 +266,28 @@ function ArenaStats:UpdateGamesFrame()
 	end
 	local games = self.db.char.games[ self.team ][ self.season ];
 
---	if( self.gamesFrame.offset > games.lastGame - 13 ) then
---		self.gamesFrame.offset = games.lastGame - 13;
---	end
+	local offsetEnd = games.lastGame - 17;
+	if( self.gamesFrame.offset > offsetEnd ) then
+		self.gamesFrame.offset = offsetEnd;
+	end
 	if( self.gamesFrame.offset < 0 ) then
 		self.gamesFrame.offset = 0;
 	end
 
+	if( self.gamesFrame.offset == 0 ) then
+		_G["ArenaGamesScrollUpButton"]:Disable();
+	else
+		_G["ArenaGamesScrollUpButton"]:Enable();
+	end
+	if( self.gamesFrame.offset >= offsetEnd ) then
+		_G["ArenaGamesScrollDownButton"]:Disable();
+	else
+		_G["ArenaGamesScrollDownButton"]:Enable();
+	end
+	_G["ArenaGamesScrollDownButton"].offsetEnd = offsetEnd;
+
 	local id = games.lastGame - self.gamesFrame.offset;
-	for i = 1,13 do
+	for i = 1,17 do
 		local game = games[id];
 		while( not game and id > 0 ) do
 			id = id - 1;

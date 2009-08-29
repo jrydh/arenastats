@@ -129,6 +129,10 @@ function ArenaStats:InitStatsFrame()
 		b:SetHighlightTexture( tHigh, "ADD" );
 	end
 	
+	f:EnableMouseWheel(1);
+	f:SetScript( "OnMouseWheel", function( frame, d )
+			f.offset = f.offset - d; f.needsUpdate = 1; end );
+
 	-- List "buttons"
 	for i = 1,10 do
 		local b = CreateFrame( "Button", "ArenaStatsFrameEntry"..i, f );

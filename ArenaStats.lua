@@ -22,7 +22,7 @@ local AceDB = LibStub:GetLibrary("AceDB-3.0");
 local AceConfigCmd = LibStub:GetLibrary("AceConfigCmd-3.0");
 local AceConfigRegistry = LibStub:GetLibrary("AceConfigRegistry-3.0");
 
-ArenaStats.version = "r5";
+ArenaStats.version = "r6";
 
 ArenaStats.classIcons = {
 	["DEATHKNIGHT"] = "Interface\\Icons\\Spell_Deathknight_ClassIcon",
@@ -161,8 +161,8 @@ function ArenaStats:UPDATE_BATTLEFIELD_SCORE()
 		local playerTeamName, oldRating, newRating, mmRating = GetBattlefieldTeamInfo( playerTeamIndex );
 		opponents.name, opponentOldRating, opponentNewRating = GetBattlefieldTeamInfo( 1-playerTeamIndex );
 
-		if( not mmRating ) then
-			self:Print( "WARNING: No matchmaking rating detected." );
+		if( mmRating == 0 ) then
+			mmRating = nil; -- on draws
 		end
 
 		local noGames = self:GetTeamStats( playerTeamName );

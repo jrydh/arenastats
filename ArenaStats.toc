@@ -1,8 +1,8 @@
-## Interface: 30100
+## Interface: 30200
 ## Title: ArenaStats
 ## Notes: Gathers statistics of your arena games
 ## Author: Rishi
-## Version: r4
+## Version: r5
 ## SavedVariables: ArenaStatsDB
 
 embeds.xml
