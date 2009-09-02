@@ -353,7 +353,7 @@ end
 
 
 function ArenaStats:SetTeam( team, season )
-	if( self.db.char.games[team] and self.db.char[team][season] ) then
+	if( self.db.char.games[team] and self.db.char.games[team][season] ) then
 		self.db.char.team = team;
 		self.db.char.season = season;
 		self.gamesFrame.needsUpdate = true;

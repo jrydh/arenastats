@@ -16,11 +16,6 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --
 
-local function ArenaStats_TeamDropDownClick()
-	UIDropDownMenu_SetSelectedName( this.owner, this.text );
-	ArenaStats:Print( "Selected team "..this.text ); -- temp debug
-end
-
 local function ArenaStats_InitializeTeamDropDown( frame )
 	local info = UIDropDownMenu_CreateInfo();
 	for team,tdata in pairs( ArenaStats.db.char.games ) do
@@ -28,9 +23,11 @@ local function ArenaStats_InitializeTeamDropDown( frame )
 		for season,sdata in pairs( tdata ) do
 			if type( season ) == "number" then
 				info.text = string.format( "%s (season %d)", team, season );
-				info.func = ArenaStats_TeamDropDownClick;
+				info.func = function( button )
+						UIDropDownMenu_SetSelectedName( button.owner, button.value );
+					end;
 				info.owner = frame;
---				info.checked = ( UIDropDownMenu_GetSelectedName( frame ) == team );
+				info.checked = ( UIDropDownMenu_GetSelectedName( frame ) == team );
 				UIDropDownMenu_AddButton( info, 1 );
 			end
 		end
@@ -74,46 +71,45 @@ function ArenaStats:SetupOptions( defaults )
 	
 	local s = f:CreateFontString( nil, "ARTWORK", "GameFontNormal" );
 	s:SetText( "Arena team" );
-	s:SetPoint( "TOPLEFT", f, "TOPLEFT", 10, -72 );
+	s:SetPoint( "TOPLEFT", f, "TOPLEFT", 16, -80 );
 	
 	local teamDropdown = CreateFrame( "Button", "ArenaStatsTeamDropDown",
 	                                         f, "UIDropDownMenuTemplate" );
-	teamDropdown:SetWidth( 128 );
-	teamDropdown:SetHeight( 16 );
+	teamDropdown:SetPoint( "LEFT", s, "LEFT", 60, 0 );
+	UIDropDownMenu_SetWidth( teamDropdown, 150 );
 	UIDropDownMenu_Initialize( teamDropdown,
 		ArenaStats_InitializeTeamDropDown );
 	teamDropdown:SetScript( "OnClick", function( self )
 		ToggleDropDownMenu( 1, nil, self, self, 0, 0 );
 	end );
-	teamDropdown:SetPoint( "LEFT", s, "LEFT", 75, 0 );
 
 	local clearTeam = CreateFrame( "Button", nil, f, "UIPanelButtonTemplate" );
 	clearTeam:SetWidth( 120 );
 	clearTeam:SetHeight( 22 );
-	clearTeam:SetPoint( "TOPLEFT", teamDropdown, "BOTTOMLEFT", 0, -10 );
+	clearTeam:SetPoint( "TOPLEFT", s, "BOTTOMLEFT", 0, -10 );
 	clearTeam:SetText( "Clear this team" );
 	clearTeam:SetScript( "OnClick", function() confirm( function()
 		local s = UIDropDownMenu_GetSelectedName( teamDropdown );
 		if s then
 			local team, season = s:match( "(.+) %(season (%d+)%)" );
-			self:PurgeTeamData( team, season );
+			self:PurgeTeamData( team, tonumber(season) );
 		end
 	end ) end );
 
 	local clearAll = CreateFrame( "Button", nil, f, "UIPanelButtonTemplate" );
 	clearAll:SetWidth( 120 );
 	clearAll:SetHeight( 22 );
-	clearAll:SetPoint( "TOPLEFT", clearTeam, "BOTTOMLEFT", 0, -10 );
+	clearAll:SetPoint( "TOPLEFT", clearTeam, "BOTTOMLEFT", 0, -8 );
 	clearAll:SetText( "Clear all data" );
 	clearAll:SetScript( "OnClick", function()
 		confirm( function() self:PurgeAllData(); end ) end );
 
 	f.name = "ArenaStats";
-	f.ok = function()
+	f.okay = function()
 		local s = UIDropDownMenu_GetSelectedName( teamDropdown );
 		if s then
 			local team, season = s:match( "(.+) %(season (%d+)%)" );
-			self:SetTeam( team, season );
+			self:SetTeam( team, tonumber(season) );
 		end
 	end;
 	f.cancel = function()
@@ -121,6 +117,8 @@ function ArenaStats:SetupOptions( defaults )
 		if team and season then
 			local s = string.format( "%s (season %d)", team, season );
 			UIDropDownMenu_SetSelectedName( teamDropdown, s );
+		else
+			UIDropDownMenu_SetSelectedName( teamDropdown, "" );
 		end
 	end;
 	f.cancel();

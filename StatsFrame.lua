@@ -223,7 +223,7 @@ function ArenaStats:InitStatsFrame()
 	-- "No team" error message
 	local s = f:CreateFontString( "ArenaStatsFrameError", "BACKGROUND", "GameFontHighlight" );
 	s:SetText( "No team selected." );
-	s:SetPoint( "TOP", f, "TOP", 3, -100 );
+	s:SetPoint( "TOP", f, "TOP", 3, -150 );
 	s:Hide();
 
 	f:SetScript( "OnUpdate", function()
@@ -307,11 +307,13 @@ function ArenaStats:UpdateStatsFrame()
 		end
 		_G["ArenaStatsFrameDisplayType"]:Hide();
 		_G["ArenaStatsFrameToggleButtonLabel"]:Hide();
+		_G["ArenaStatsFrameToggleButton"]:Disable();
 		_G["ArenaStatsFrameError"]:Show();
 		return;
 	else
 		_G["ArenaStatsFrameDisplayType"]:Show();
 		_G["ArenaStatsFrameToggleButtonLabel"]:Show();
+		_G["ArenaStatsFrameToggleButton"]:Enable();
 		_G["ArenaStatsFrameError"]:Hide();
 	end
 
