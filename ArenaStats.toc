@@ -2,7 +2,7 @@
 ## Title: ArenaStats
 ## Notes: Gathers statistics of your arena games
 ## Author: Rishi
-## Version: r5
+## Version: r6
 ## SavedVariables: ArenaStatsDB
 
 embeds.xml
@@ -10,3 +10,4 @@ ArenaStats.lua
 GamesFrame.lua
 StatsFrame.lua
 GraphFrame.lua
+options.lua

@@ -27,8 +27,7 @@ function ArenaStats:InitGraphFrame()
 	f:SetWidth( 500 );
 	f:SetHeight( 530 );
 
-	f:ClearAllPoints();
-	f:SetPoint( "CENTER", UIParent, "CENTER", 0, 0 );
+	if not f:GetLeft() then f:SetPoint( "CENTER" ); end
 
 	f:SetScript( "OnShow", function() PlaySound("igSpellBookOpen"); end );
 	f:SetScript( "OnHide", function() PlaySound("igSpellBookClose"); end );
@@ -68,6 +67,11 @@ function ArenaStats:InitGraphFrame()
 	b:SetPushedTexture( "Interface/Buttons/UI-Panel-MinimizeButton-Down" )
 	b:SetHighlightTexture( "Interface/Buttons/UI-Panel-MinimizeButton-Highlight" )
 
+	local s = f:CreateFontString( "ArenaGraphFrameError", "BACKGROUND", "GameFontHighlight" );
+	s:SetText( "No team selected." );
+	s:SetPoint( "CENTER", f, "CENTER" );
+	s:Hide();
+
 	-- Graph
 	local g = GraphLib:CreateGraphLine( "ArenaGraph", f, "CENTER", "CENTER", 0, -15, 470, 470 );
 	f.graph = g;
@@ -83,7 +87,24 @@ function ArenaStats:InitGraphFrame()
 end
 
 function ArenaStats:UpdateGraphFrame()
-	local games = self.db.char.games[ self.team ][ self.season ];
+	local team, season = self.db.char.team, self.db.char.season;
+	if( not team or not season ) then
+		self.graphFrame.graph:Hide();
+		_G["ArenaGraphTeamName"]:Hide();
+		_G["ArenaGraphTeamSize"]:Hide();
+		_G["ArenaGraphHighRating"]:Hide();
+		_G["ArenaGraphGridSpacing"]:Hide();
+		_G["ArenaGraphFrameError"]:Show();
+		return;
+	else
+		self.graphFrame.graph:Show();
+		_G["ArenaGraphTeamName"]:Show();
+		_G["ArenaGraphTeamSize"]:Show();
+		_G["ArenaGraphHighRating"]:Show();
+		_G["ArenaGraphGridSpacing"]:Show();
+		_G["ArenaGraphFrameError"]:Hide();
+	end
+	local games = self.db.char.games[ team ][ season ];
 	local points = {};
 	local points2 = {};
 	local xmin, xmax, ymin, ymax;
@@ -145,17 +166,19 @@ function ArenaStats:UpdateGraphFrame()
 	g:SetAutoScale( true );
 	g.NeedsUpdate = true;
 
-	getglobal("ArenaGraphTeamName"):SetText( self.team );
-	local size = self.db.char.games[ self.team ].teamSize;
+	_G["ArenaGraphTeamName"]:SetText( self.db.char.team );
+	local size = self.db.char.games[ self.db.char.team ].teamSize;
 	if( size ) then
-		getglobal("ArenaGraphTeamSize"):SetText(
+		_G["ArenaGraphTeamSize"]:SetText(
 			string.format( "(%dv%d)", size, size ) );
 	else
-		getglobal("ArenaGraphTeamSize"):SetText( "" );
+		_G["ArenaGraphTeamSize"]:SetText( "" );
 	end
-	local s = "Current: |cFF0000FF%d|r / |cFF00FF00%d|r    Max: |cFF0000FF%d|r / |cFF00FF00%d|r";
-	local s = s:format( currentTR, currentMMR, maxTR, maxMMR );
-	getglobal("ArenaGraphHighRating"):SetText( s );
-	getglobal("ArenaGraphGridSpacing"):SetText(
+	local blue, green = "|cFF0000FF", "|cFF00FF00";
+	local s = "Current: %s%d|r / %s%d|r    Max: %s%d|r / %s%d|r";
+	local s = s:format( blue, currentTR, green, currentMMR,
+	                            blue, maxTR, green, maxMMR );
+	_G["ArenaGraphHighRating"]:SetText( s );
+	_G["ArenaGraphGridSpacing"]:SetText(
 		string.format( "Each vertical gridline represents %d games", xgrid ) );
 end

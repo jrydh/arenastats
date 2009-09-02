@@ -16,7 +16,8 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --
 
-ArenaStats = LibStub("AceAddon-3.0"):NewAddon("ArenaStats", "AceComm-3.0", "AceConsole-3.0", "AceEvent-3.0", "AceSerializer-3.0")
+ArenaStats = LibStub("AceAddon-3.0"):NewAddon("ArenaStats", "AceComm-3.0",
+                    "AceConsole-3.0", "AceEvent-3.0", "AceSerializer-3.0")
 
 local AceDB = LibStub:GetLibrary("AceDB-3.0");
 local AceConfigCmd = LibStub:GetLibrary("AceConfigCmd-3.0");
@@ -44,7 +45,6 @@ function ArenaStats:OnInitialize()
 		}
 	}
 	self.db = AceDB:New( "ArenaStatsDB", defaults );
-	self.team = self.db.char.team or next( self.db.char.games );
 
 	self.consoleOptions = {
 		type = "group",
@@ -98,6 +98,14 @@ function ArenaStats:OnInitialize()
 				type = "execute",
 				func = function() ArenaStats.graphFrame:Show(); end,
 			},
+			options = {
+				name = "options",
+				desc = "Show options",
+				type = "execute",
+				func = function()
+					InterfaceOptionsFrame_OpenToCategory( ArenaStats.optionsFrame );
+				end,
+			},
 		}
 	};
 
@@ -108,13 +116,13 @@ function ArenaStats:OnInitialize()
 	self:InitGamesFrame();
 	self:InitGraphFrame();
 	self:InitStatsFrame();
+	self:SetupOptions();
 end
 
 function ArenaStats:OnEnable()
 	self:RegisterEvent("ZONE_CHANGED_NEW_AREA");
 	self:RegisterEvent("UPDATE_BATTLEFIELD_SCORE");
 	self:RegisterComm("ARENASTATS");
-	self.season = GetCurrentArenaSeason();
 end
 
 function ArenaStats:OnDisable()
@@ -128,12 +136,17 @@ end
 
 function ArenaStats:ZONE_CHANGED_NEW_AREA()
 	if( self.newEntry ) then
+		local season = GetCurrentArenaSeason();
 		self:Print( string.format( "%s: %d -> %d", self.newEntry.team,
 			self.newEntry.game.oldRating, self.newEntry.game.newRating ) );
 		self:Print( string.format( "%s: %d -> %d", self.newEntry.game.opponents.name,
 			self.newEntry.opponentOldRating, self.newEntry.opponentNewRating ) );
-		self:AddGame( self.newEntry.team, GetCurrentArenaSeason(), self.newEntry.id, self.newEntry.game );
-		self:Synchronize( self.newEntry.team, GetCurrentArenaSeason(), self.newEntry.id );
+		self:AddGame( self.newEntry.team, season, self.newEntry.id, self.newEntry.game );
+		self:Synchronize( self.newEntry.team, season, self.newEntry.id );
+		if( self.db.char.team == nil or self.db.char.season == nil ) then
+			self.db.char.team = self.newEntry.team;
+			self.db.char.season = season;
+		end
 		self.newEntry = nil;
 	end
 end
@@ -158,8 +171,10 @@ function ArenaStats:UPDATE_BATTLEFIELD_SCORE()
 		local opponents = ( playerTeamIndex == 0 and goldTeam or greenTeam );
 		local result = ( GetBattlefieldWinner() == playerTeamIndex ) and 1 or 0
 	
-		local playerTeamName, oldRating, newRating, mmRating = GetBattlefieldTeamInfo( playerTeamIndex );
-		opponents.name, opponentOldRating, opponentNewRating = GetBattlefieldTeamInfo( 1-playerTeamIndex );
+		local playerTeamName, oldRating, newRating, mmRating =
+			GetBattlefieldTeamInfo( playerTeamIndex );
+		opponents.name, opponentOldRating, opponentNewRating =
+			GetBattlefieldTeamInfo( 1-playerTeamIndex );
 
 		if( mmRating == 0 ) then
 			mmRating = nil; -- on draws
@@ -187,9 +202,11 @@ end
 function ArenaStats:AddGame( team, season, id, game )
 	if( self.db.char.games[team] and self.db.char.games[team][season] 
 			and self.db.char.games[team][season][id] ) then
-		self:Print( string.format( "Already have game %d (S%d) for team '%s'", id, season, team ) );
+		self:Print( string.format(
+			"Already have game %d (S%d) for team '%s'", id, season, team ) );
 	else
-		self:Print( string.format( "Adding game %d (S%d) for team '%s'", id, season, team ) );
+		self:Print( string.format(
+			"Adding game %d (S%d) for team '%s'", id, season, team ) );
 		self.db.char.games[team] = self.db.char.games[team] or {};
 		self.db.char.games[team][season] = self.db.char.games[team][season] or {};
 		self.db.char.games[team][season][id] = game;
@@ -206,12 +223,29 @@ function ArenaStats:AddGame( team, season, id, game )
 	end
 end
 
-function ArenaStats:PurgeTeamData( team )
-	self.db.char.games[team] = nil;
+function ArenaStats:PurgeTeamData( team, season )
+	if( season and self.db.char.games[team] ) then
+		self.db.char.games[team][season] = nil;
+		self:Print( string.format( "Data for team '%s' (season %d) deleted.",
+		                           team, season ) );
+	elseif( self.db.char.games[team] ) then
+		self.db.char.games[team] = nil;
+		self:Print( string.format( "Data for team '%s' deleted.", team ) );
+	else
+		self:Print( string.format( "No data for team '%s'.", team ) );
+	end
+	local cteam, cseason = self.db.char.team, self.db.char.season;
+	if( cteam and cteam == team and
+			( not season or ( cseason and cseason == season ) ) ) then
+		self.db.char.team = nil;
+		self.db.char.season = nil;
+	end
 end
 
 function ArenaStats:PurgeAllData()
 	self.db.char.games = {};
+	self.db.char.team = nil;
+	self.db.char.season = nil;
 end
 
 
@@ -243,8 +277,8 @@ function ArenaStats:SynchronizeRecent()
 end
 
 function ArenaStats:QueryRecentGames()
-	local today = { ["year"] = date("%Y"), ["month"] = date("%m"), ["day"] = date("%d"),
-		["hour"] = 1, ["min"] = 0, ["sec"] = 0 };
+	local today = { ["year"] = date("%Y"), ["month"] = date("%m"),
+		["day"] = date("%d"), ["hour"] = 1, ["min"] = 0, ["sec"] = 0 };
 	local cutoff = time(today) - 86400*14;
 	local mt = { ["Jan"] = 1, ["Feb"] = 2, ["Mar"] = 3, ["Apr"] = 4,
 		["May"] = 5, ["Jun"] = 6, ["Jul"] = 7, ["Aug"] = 8,
@@ -269,19 +303,22 @@ function ArenaStats:QueryRecentGames()
 end
 
 function ArenaStats:Synchronize( team, season, id )
-	self:SendCommMessage( "ARENASTATS", self:Serialize( "QUERY", { team, season, id } ), "PARTY" );
+	self:SendCommMessage( "ARENASTATS", self:Serialize( "QUERY",
+	                            { team, season, id } ), "PARTY" );
 end
 
 function ArenaStats:VersionQuery()
 	self:Print( "Checking party versions..." );
-	self:Print( string.format( "%s: version %s", UnitName("player"), self.version ) );
-	self:SendCommMessage( "ARENASTATS", self:Serialize( "VERSIONQUERY" ), "PARTY" );
+	self:Print( string.format( "%s: version %s",
+	            UnitName("player"), self.version ) );
+	self:SendCommMessage( "ARENASTATS",
+		self:Serialize( "VERSIONQUERY" ), "PARTY" );
 end
 
 function ArenaStats:OnCommReceived( prefix, message, dist, sender )
 	if( sender == UnitName("player") ) then return end
 	local flag, cmd, m = self:Deserialize( message );
-	if not flag then return end
+	if( not flag ) then return end
 
 	if( cmd == "GAME" ) then
 		local team, season, id, game = unpack( m );
@@ -291,47 +328,41 @@ function ArenaStats:OnCommReceived( prefix, message, dist, sender )
 		if( self.db.char.games[team] and
 				( not self.db.char.games[team][season] or
 				not self.db.char.games[team][season][id] ) ) then
-			self:SendCommMessage( "ARENASTATS", self:Serialize( "REQUEST", m ), "WHISPER", sender );
+			self:SendCommMessage( "ARENASTATS",
+				self:Serialize( "REQUEST", m ), "WHISPER", sender );
 		end
 	elseif( cmd == "REQUEST" ) then
 		local team, season, id = unpack( m );
 		if( self.db.char.games[team] and self.db.char.games[team][season] and
 				self.db.char.games[team][season][id] ) then
 			self:SendCommMessage( "ARENASTATS", self:Serialize( "GAME",
-				{ team, season, id, self.db.char.games[team][season][id] } ), "WHISPER", sender );
+				{ team, season, id, self.db.char.games[team][season][id] } ),
+				"WHISPER", sender );
 		end
 	elseif( cmd == "SYNC" ) then
 		self:QueryAllGames();
 	elseif( cmd == "SYNCRECENT" ) then
 		self:QueryRecentGames();
 	elseif( cmd == "VERSIONQUERY" ) then
-		self:SendCommMessage( "ARENASTATS", self:Serialize( "VERSION", self.version ), "WHISPER", sender );
+		self:SendCommMessage( "ARENASTATS",
+			self:Serialize( "VERSION", self.version ), "WHISPER", sender );
 	elseif( cmd == "VERSION" ) then
 		self:Print( sender .. ": version " .. m );
 	end
 end
 
 
-function ArenaStats:SetTeam( team )
-	if( self.db.char.games[team] ) then
-		self.team = team;
+function ArenaStats:SetTeam( team, season )
+	if( self.db.char.games[team] and self.db.char[team][season] ) then
+		self.db.char.team = team;
+		self.db.char.season = season;
 		self.gamesFrame.needsUpdate = true;
 		self.statsFrame.needsUpdate = 2;
 		self.graphFrame.needsUpdate = true;
 	else
-		self:Print( string.format( "Team '%s' not found. You need to play at least one rated "..
-					"arena game with a team to be able to select it.", team ) );
-	end
-end
-
-function ArenaStats:SetSeason( season )
-	if( season <= GetCurrentArenaSeason() and season > 0 ) then
-		self.season = season;
-		self.gamesFrame.needsUpdate = true;
-		self.statsFrame.needsUpdate = 2;
-		self.graphFrame.needsUpdate = true;
-	else
-		self:Print( "Invalid season:", season );
+		self:Print( string.format( "No data for team '%s' (season %d) found. "..
+					"You need to play at least one rated arena game with a team "..
+					"to be able to select it.", team, season ) );
 	end
 end
 
@@ -349,7 +380,7 @@ end
 
 local function RatingToPointsHelper( rating, teamSize )
 	local points
-	if rating <= 1500 then
+	if( rating <= 1500 ) then
 		if( teamSize == 5 ) then
 			points = floor( 0.5 + ( 0.22 * rating + 14 ) );
 		elseif( teamSize == 3 ) then
@@ -382,8 +413,9 @@ function ArenaStats:RatingToPoints( rating )
 		local points5v5 = RatingToPointsHelper( rating, 5 );
 		local points3v3 = RatingToPointsHelper( rating, 3 );
 		local points2v2 = RatingToPointsHelper( rating, 2 );
-		self:Print( string.format( "%d rating gives %d (5v5), %d (3v3), %d (2v2) arena points.",
-									rating, points5v5, points3v3, points2v2 ) );
+		self:Print( string.format(
+			        "%d rating gives %d (5v5), %d (3v3), %d (2v2) arena points.",
+			        rating, points5v5, points3v3, points2v2 ) );
 	else
 		local name1, size1, rat1 = GetArenaTeam(1);
 		local name2, size2, rat2 = GetArenaTeam(2);
@@ -406,17 +438,20 @@ function ArenaStats:RequiredRatingForPoints( points )
 	if( points <= 344 ) then
 		rating5v5 = ceil( ( (points-0.5) - 14 ) / 0.22 );
 	else
-		rating5v5 = ceil( log( ( 1511.26 - points ) / ( 1639.28 * points ) ) / -0.00412 );
+		rating5v5 = ceil( log( ( 1511.26 - points )
+		                       / ( 1639.28 * points ) ) / -0.00412 );
 	end
 	if( points <= 303 ) then
 		rating3v3 = ceil( ( (points-0.5)/0.88 - 14 ) / 0.22 );
 	elseif( points <= 1329 ) then
-		rating3v3 = ceil( log( ( 1511.26 - points/0.88 ) / ( 1639.28 * points/0.88 ) ) / -0.00412 );
+		rating3v3 = ceil( log( ( 1511.26 - points/0.88 )
+		                       / ( 1639.28 * points/0.88 ) ) / -0.00412 );
 	end
 	if( points <= 261 ) then
 		rating2v2 = ceil( ( (points-0.5)/0.76 - 14 ) / 0.22 );
 	elseif( points <= 1148 ) then
-		rating2v2 = ceil( log( ( 1511.26 - points/0.76 ) / ( 1639.28 * points/0.76 ) ) / -0.00412 );
+		rating2v2 = ceil( log( ( 1511.26 - points/0.76 )
+		                       / ( 1639.28 * points/0.76 ) ) / -0.00412 );
 	end
 	local str = string.format( "%d points requires %d (5v5)", points, rating5v5 );
 	if( rating3v3 ) then str = string.format( str .. ", %d (3v3)", rating3v3 ); end

@@ -31,11 +31,10 @@ function ArenaStats:InitGamesFrame()
 	f:SetScript( "OnDragStart", function() f:StartMoving(); end );
 	f:SetScript( "OnDragStop", function() f:StopMovingOrSizing(); end );
 
-	f:ClearAllPoints();
-	f:SetPoint( "CENTER", UIParent, "CENTER", 0, 0 );
+	if not f:GetLeft() then f:SetPoint( "CENTER" ); end
 	
 	f:SetScript( "OnShow", function()
-			SetPortraitTexture( getglobal("ArenaGamesPortrait"), "player" );
+			SetPortraitTexture( _G["ArenaGamesPortrait"], "player" );
 			PlaySound("igSpellBookOpen");
 		end );
 	f:SetScript( "OnHide", function() PlaySound("igSpellBookClose"); end );
@@ -190,7 +189,7 @@ function ArenaStats:InitGamesFrame()
 	-- Scroll buttons
 	local b = CreateFrame( "Button", "ArenaGamesScrollUpButton", f );
 	b:SetScript( "OnClick", function()
-		if IsAltKeyDown() then
+		if( IsAltKeyDown() ) then
 			self.gamesFrame.offset = 0;
 		else
 			self.gamesFrame.offset = max( self.gamesFrame.offset - 5, 0 );
@@ -220,13 +219,19 @@ function ArenaStats:InitGamesFrame()
 	b:SetPushedTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollDown-Down" );
 	b:SetDisabledTexture( "Interface/ChatFrame/UI-ChatIcon-ScrollDown-Disabled" );
 	
+	-- "No team" error message
+	local s = f:CreateFontString( "ArenaGamesFrameError", "BACKGROUND", "GameFontHighlight" );
+	s:SetText( "No team selected." );
+	s:SetPoint( "TOP", f, "TOP", 3, -100 );
+	s:Hide();
+	
 	self.gamesFrame = f;
 	tinsert( UISpecialFrames, "ArenaGamesFrame" );
 	self.gamesFrame.offset = 0;
 	self.gamesFrame.needsUpdate = true;
 
 	StaticPopupDialogs["AS_SET_GAME_COMMENT"] = {
-		text = "Set comments for game %d:",
+		text = "Set comment:",
 		button1 = ACCEPT,
 		button2 = CANCEL,
 		hasEditBox = 1,
@@ -260,11 +265,19 @@ function ArenaStats:InitGamesFrame()
 end
 
 function ArenaStats:UpdateGamesFrame()
-	if( not self.db.char.games[ self.team ] or
-		not self.db.char.games[ self.team ][ self.season ] ) then
+	local team, season = self.db.char.team, self.db.char.season;
+	if( not team or not season ) then
+		for i = 1,17 do
+			_G["ArenaGamesFrameEntry"..i]:Hide();
+		end
+		_G["ArenaGamesScrollUpButton"]:Disable();
+		_G["ArenaGamesScrollDownButton"]:Disable();
+		_G["ArenaGamesFrameError"]:Show();
 		return;
+	else
+		_G["ArenaGamesFrameError"]:Hide();
 	end
-	local games = self.db.char.games[ self.team ][ self.season ];
+	local games = self.db.char.games[ team ][ season ];
 
 	local offsetEnd = games.lastGame - 17;
 	if( self.gamesFrame.offset > offsetEnd ) then
@@ -293,19 +306,19 @@ function ArenaStats:UpdateGamesFrame()
 			id = id - 1;
 			game = games[id];
 		end
-		local x = getglobal("ArenaGamesFrameEntry"..i);
+		local x = _G["ArenaGamesFrameEntry"..i];
 		if( game ) then
 			x:Show();
-			getglobal("ArenaGamesFrameEntry"..i.."Game"):SetText( id );
+			_G["ArenaGamesFrameEntry"..i.."Game"]:SetText( id );
 			for j,opp in ipairs( game.opponents ) do
 				local texture = self.classIcons[opp[3]] or "Interface\\Icons\\INV_Misc_QuestionMark";
-				getglobal( "ArenaGamesFrameEntry"..i.."Class"..j ):SetTexture( texture );
+				_G["ArenaGamesFrameEntry"..i.."Class"..j]:SetTexture( texture );
 			end
 			for j = #game.opponents+1,5 do
-				getglobal( "ArenaGamesFrameEntry"..i.."Class"..j ):SetTexture( nil );
+				_G["ArenaGamesFrameEntry"..i.."Class"..j]:SetTexture( nil );
 			end
-			getglobal("ArenaGamesFrameEntry"..i.."Result"):SetText( game.result );
-			getglobal("ArenaGamesFrameEntry"..i.."Rating"):SetText( game.newRating );
+			_G["ArenaGamesFrameEntry"..i.."Result"]:SetText( game.result );
+			_G["ArenaGamesFrameEntry"..i.."Rating"]:SetText( game.newRating );
 			x:SetScript( "OnEnter", function()
 				GameTooltip:SetOwner( x, "ANCHOR_RIGHT" );
 				GameTooltip:SetText( game.opponents.name );
@@ -325,7 +338,7 @@ function ArenaStats:UpdateGamesFrame()
 			x:SetScript( "OnLeave", function() GameTooltip:Hide() end );
 			x:SetScript( "OnClick", function()
 				self.gamesFrame.commentedGame = game;
-				StaticPopup_Show( "AS_SET_GAME_COMMENT", id );
+				StaticPopup_Show( "AS_SET_GAME_COMMENT" );
 			end );
 			
 			id = id - 1;

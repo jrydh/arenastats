@@ -34,8 +34,7 @@ function ArenaStats:InitStatsFrame()
 	f:SetScript( "OnDragStart", function() f:StartMoving(); end );
 	f:SetScript( "OnDragStop", function() f:StopMovingOrSizing(); end );
 
-	f:ClearAllPoints();
-	f:SetPoint( "CENTER", UIParent, "CENTER", 0, 0 );
+	if not f:GetLeft() then f:SetPoint( "CENTER" ); end
 	
 	f:SetScript( "OnShow", function() PlaySound("igSpellBookOpen"); end );
 	f:SetScript( "OnHide", function() PlaySound("igSpellBookClose"); end );
@@ -221,6 +220,12 @@ function ArenaStats:InitStatsFrame()
 	s:SetJustifyH( "RIGHT" );
 	s:SetPoint( "RIGHT", b, "LEFT", -2, 0 );
 
+	-- "No team" error message
+	local s = f:CreateFontString( "ArenaStatsFrameError", "BACKGROUND", "GameFontHighlight" );
+	s:SetText( "No team selected." );
+	s:SetPoint( "TOP", f, "TOP", 3, -100 );
+	s:Hide();
+
 	f:SetScript( "OnUpdate", function()
 			if( f.needsUpdate > 1 ) then self:CompileStatsData(); end
 			if( f.needsUpdate > 0 ) then self:UpdateStatsFrame(); end
@@ -236,10 +241,10 @@ function ArenaStats:InitStatsFrame()
 end
 
 function ArenaStats:CompileStatsData()
-	if( not self.db.char.games[ self.team ] or
-		not self.db.char.games[ self.team ][ self.season ] ) then return end
+	local team, season = self.db.char.team, self.db.char.season;
+	if( not team or not season ) then return; end
 
-	local games = self.db.char.games[ self.team ][ self.season ];
+	local games = self.db.char.games[ team ][ season ];
 
 	local today = { ["year"] = date("%Y"), ["month"] = date("%m"), ["day"] = date("%d"),
 		["hour"] = 1, ["min"] = 0, ["sec"] = 0 };
@@ -276,16 +281,16 @@ function ArenaStats:CompileStatsData()
 			end
 		end
 	end
-	local size = self.db.char.games[ self.team ].teamSize;
-	getglobal("ArenaStatsFrameTeamName"):SetText( self.team );
+	local size = self.db.char.games[ team ].teamSize;
+	_G["ArenaStatsFrameTeamName"]:SetText( team );
 	if( size ) then
-		getglobal("ArenaStatsFrameTeamSize"):SetText(
+		_G["ArenaStatsFrameTeamSize"]:SetText(
 			string.format( "(%dv%d)", size, size ) );
 	else
-		getglobal("ArenaStatsFrameTeamSize"):SetText( "" );
+		_G["ArenaStatsFrameTeamSize"]:SetText( "" );
 	end
-	getglobal("ArenaStatsFrameTotalGames"):SetText( total );
-	getglobal("ArenaStatsFrameWinLoss"):SetText( wins.." - "..(total-wins) );
+	_G["ArenaStatsFrameTotalGames"]:SetText( total );
+	_G["ArenaStatsFrameWinLoss"]:SetText( wins.." - "..(total-wins) );
 	self.statsFrame.data = {};
 	for cc,data in pairs( t ) do
 		tinsert( self.statsFrame.data, data );
@@ -295,6 +300,21 @@ function ArenaStats:CompileStatsData()
 end
 
 function ArenaStats:UpdateStatsFrame()
+	local team, season = self.db.char.team, self.db.char.season;
+	if( not team or not season ) then
+		for i = 1,10 do
+			_G["ArenaStatsFrameEntry"..i]:Hide();
+		end
+		_G["ArenaStatsFrameDisplayType"]:Hide();
+		_G["ArenaStatsFrameToggleButtonLabel"]:Hide();
+		_G["ArenaStatsFrameError"]:Show();
+		return;
+	else
+		_G["ArenaStatsFrameDisplayType"]:Show();
+		_G["ArenaStatsFrameToggleButtonLabel"]:Show();
+		_G["ArenaStatsFrameError"]:Hide();
+	end
+
 	if( self.statsFrame.offset > #self.statsFrame.data - 10 ) then
 		self.statsFrame.offset = #self.statsFrame.data - 10;
 	end
@@ -303,31 +323,31 @@ function ArenaStats:UpdateStatsFrame()
 	end
 	
 	if( self.statsFrame.displayWeek ) then
-		getglobal( "ArenaStatsFrameDisplayType" ):SetText( "THIS WEEK" );
-		getglobal( "ArenaStatsFrameToggleButtonLabel" ):SetText( "View this Week's Stats" );
+		_G["ArenaStatsFrameDisplayType"]:SetText( "THIS WEEK" );
+		_G["ArenaStatsFrameToggleButtonLabel"]:SetText( "View this Week's Stats" );
 	else
-		getglobal( "ArenaStatsFrameDisplayType" ):SetText( "THIS SEASON" );
-		getglobal( "ArenaStatsFrameToggleButtonLabel" ):SetText( "View this Season's Stats" );
+		_G["ArenaStatsFrameDisplayType"]:SetText( "THIS SEASON" );
+		_G["ArenaStatsFrameToggleButtonLabel"]:SetText( "View this Season's Stats" );
 	end
 	
 	for i = 1,10 do
-	 	local data = self.statsFrame.data[i+self.statsFrame.offset];
+		local data = self.statsFrame.data[i+self.statsFrame.offset];
 		if( data ) then
-			getglobal( "ArenaStatsFrameEntry"..i ):Show();
+			_G["ArenaStatsFrameEntry"..i]:Show();
 			for j,class in ipairs( data.class ) do
 				local texture = self.classIcons[class] or "Interface\\Icons\\INV_Misc_QuestionMark";
-				getglobal( "ArenaStatsFrameEntry"..i.."Class"..j ):SetTexture( texture );
+				_G["ArenaStatsFrameEntry"..i.."Class"..j]:SetTexture( texture );
 			end
 			for j = #data.class+1,5 do
-				getglobal( "ArenaStatsFrameEntry"..i.."Class"..j ):SetTexture( nil );
+				_G["ArenaStatsFrameEntry"..i.."Class"..j]:SetTexture( nil );
 			end
-			getglobal( "ArenaStatsFrameEntry"..i.."Games" ):SetText( data.total );
-			getglobal( "ArenaStatsFrameEntry"..i.."Wins" ):SetText( data.wins.." - " );
-			getglobal( "ArenaStatsFrameEntry"..i.."Losses" ):SetText( data.total - data.wins );
-			getglobal( "ArenaStatsFrameEntry"..i.."WinPct" ):SetText(
+			_G["ArenaStatsFrameEntry"..i.."Games"]:SetText( data.total );
+			_G["ArenaStatsFrameEntry"..i.."Wins"]:SetText( data.wins.." - " );
+			_G["ArenaStatsFrameEntry"..i.."Losses"]:SetText( data.total - data.wins );
+			_G["ArenaStatsFrameEntry"..i.."WinPct"]:SetText(
 				floor( 0.5 + 100*data.wins/data.total ).."%" );
 		else
-			getglobal( "ArenaStatsFrameEntry"..i ):Hide();
+			_G["ArenaStatsFrameEntry"..i]:Hide();
 		end
 	end
 end
