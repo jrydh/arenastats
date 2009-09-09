@@ -79,9 +79,6 @@ function ArenaStats:SetupOptions( defaults )
 	UIDropDownMenu_SetWidth( teamDropdown, 150 );
 	UIDropDownMenu_Initialize( teamDropdown,
 		ArenaStats_InitializeTeamDropDown );
-	teamDropdown:SetScript( "OnClick", function( self )
-		ToggleDropDownMenu( 1, nil, self, self, 0, 0 );
-	end );
 
 	local clearTeam = CreateFrame( "Button", nil, f, "UIPanelButtonTemplate" );
 	clearTeam:SetWidth( 120 );
